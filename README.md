@@ -5,6 +5,9 @@ Future Ideas:
 
 Strategy Performance: https://medium.com/@rgaveiga/optionlab-a-python-library-for-evaluating-option-trading-strategies-50551ba7e578
 
+* FIX MONTE CARLO THETA 
+
+
 * Customization and Extensibility: Design the library to be modular and customizable, allowing users to extend its functionality to suit their specific needs.
 
 * Optimization: Potential optimization technique at  http://www.jaeckel.org/LetsBeRational.pdf
