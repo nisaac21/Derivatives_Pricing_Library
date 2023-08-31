@@ -19,6 +19,8 @@ Allow users to calculate option prices, Greeks (Delta, Gamma, Theta, Vega, Rho),
 
 * Volatility Analysis: Provide tools to analyze historical and implied volatility. Offer functions to compute volatility skews, term structures, and volatility cones.
 
+* Volatility Forecasting: Implement features to forecast future implied or historical volatility using different models, such as GARCH
+
 * Risk Management: Offer tools for risk assessment and portfolio management involving options positions.
 Calculate portfolio Greeks, value-at-risk (VaR), and stress testing scenarios.
 

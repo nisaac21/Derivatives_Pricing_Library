@@ -7,6 +7,8 @@ from scipy.stats import gmean
 from utils import validate_option_type
 from quant_math import gbm_simulation
 
+# CAN CREATE A HANDLER FOR SPOT_PRICES
+
 class PayOff(ABC):
 
     @abstractmethod
@@ -27,7 +29,7 @@ class PayOffEuropean(PayOff):
         super().__init__(strike_price, option_type)
     
 
-    def pay_off(self, spot_prices: np.array) -> float:
+    def pay_off(self, spot_prices : np.array) -> float:
         if self.option_type == 'call':
             return np.maximum(spot_prices[-1] - self.K, 0)
         elif self.option_type == 'put':
@@ -65,36 +67,42 @@ class PayOffDoubleDigital(PayOff):
     
 
     def pay_off(self, spot_prices: np.array) -> float:
-        if spot_prices[-1] >= self.D and spot_prices <= self.U:
-            return self.C
-        else:
-            return 0
-        
-class AsianOptionPayOff(PayOff):
+        if self.option_type == 'call':
+            if spot_prices[-1] >= self.D and spot_prices[-1] <= self.U:
+                return self.C
+            else:
+                return 0
+        elif self.option_type == 'put':
+            if spot_prices[-1] < self.D or spot_prices[-1] > self.U:
+                return self.C
+            else:
+                return 0
+
+
+class PayOffAsianOption(PayOff):
 
     @abstractmethod
-    def __init__(self, strike_price : float, option_type : str, path : np.array) -> None: 
+    def __init__(self, strike_price : float, option_type : str) -> None: 
         super().__init__(strike_price, option_type)
 
     @abstractmethod
     def _get_mean(self, path):
         pass
 
-    @abstractmethod
     def pay_off(self, spot_prices : np.array) -> float:
         mean = self._get_mean(spot_prices)
-        return PayOffEuropean(self.mean, self.option_type).pay_off(spot_prices[-1])
+        return PayOffEuropean(mean, self.option_type).pay_off(spot_prices)
 
-class AsianOptionArithmeticPayOff(AsianOptionPayOff):
+class PayOffAsianOptionArithmetic(PayOffAsianOption):
     
 
-    def __init__(self, strike_price : float, option_type : str, path : np.array) -> None:
-        super().__init__(strike_price, option_type, path)
+    def __init__(self, strike_price : float, option_type : str,) -> None:
+        super().__init__(strike_price, option_type)
 
     def _get_mean(self, path):
         return np.mean(path)
     
-class AsianOptionGeometricPayOff(AsianOptionPayOff):
+class PayOffAsianOptionGeometric(PayOffAsianOption):
 
     def __init__(self, strike_price : float, option_type : str) -> None:
         super().__init__(strike_price, option_type)
