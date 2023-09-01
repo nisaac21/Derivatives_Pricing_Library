@@ -5,9 +5,7 @@ import numbers
 from scipy.stats import gmean
 
 from utils import validate_option_type
-from option_py.quant_math import gbm_simulation
-
-# CAN CREATE A HANDLER FOR SPOT_PRICES
+from option_wiz.quant_math import gbm_simulation
 
 
 class PayOff(ABC):

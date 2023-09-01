@@ -1,8 +1,8 @@
 from typing import Literal
 from abc import ABC, abstractmethod
 
-from option_py.PricingModels import AnalyticFormula, MonteCarlo
-from option_py.PayOff import *
+from option_wiz.PricingModels import AnalyticFormula, MonteCarlo
+from option_wiz.PayOff import *
 from utils import validate_option_type
 
 ANALYTIC_FORMULA = AnalyticFormula()

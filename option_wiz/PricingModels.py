@@ -5,9 +5,9 @@ from scipy.optimize import newton
 from typing import Literal
 
 from utils import validate_option_type, validate_d_i
-from option_py.quant_math import gbm_simulation, merton_jump_diff, heston_path
-from option_py.PayOff import PayOff, PayOffEuropean
-from option_py.Options import Option
+from option_wiz.quant_math import gbm_simulation, merton_jump_diff, heston_path
+from option_wiz.PayOff import PayOff, PayOffEuropean
+from option_wiz.Options import Option
 
 from abc import ABC, abstractmethod
 
