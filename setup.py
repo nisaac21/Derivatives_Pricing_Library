@@ -30,6 +30,6 @@ setup(
     classifiers=[_f for _f in CLASSIFIERS.split('\n') if _f],
     platforms=["Windows", "Linux", "Solaris", "Mac OS-X", "Unix"],
     packages=find_packages(where="option_py"),
-    package_dir={"": "option_py"},
+    package_dir={"": "option_wiz"},
     python_requires=">=3.6"
 )

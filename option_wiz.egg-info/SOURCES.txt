@@ -1,0 +1,7 @@
+LICENSE
+README.md
+setup.py
+option_wiz/option_wiz.egg-info/PKG-INFO
+option_wiz/option_wiz.egg-info/SOURCES.txt
+option_wiz/option_wiz.egg-info/dependency_links.txt
+option_wiz/option_wiz.egg-info/top_level.txt

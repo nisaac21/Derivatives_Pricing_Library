@@ -5,9 +5,8 @@ from scipy.optimize import newton
 from typing import Literal
 
 from utils import validate_option_type, validate_d_i
-from option_wiz.quant_math import gbm_simulation, merton_jump_diff, heston_path
-from option_wiz.PayOff import PayOff, PayOffEuropean
-from option_wiz.Options import Option
+from quant_math import gbm_simulation, merton_jump_diff, heston_path
+from PayOff import PayOff
 
 from abc import ABC, abstractmethod
 
@@ -48,14 +47,21 @@ class PricingModel(ABC):
     def greeks(self) -> dict:
         pass
 
-# POTENTIAL ABSTRACTION
-
 
 class Simulator(PricingModel):
 
-    def _time_steps(self):
-        """Amount of hours in self.T years"""
+    def __init__(self, S0: float, K: float, r: float, sigma: float, T: float,
+                 pay_off: PayOff):
 
+        self.S0 = S0
+        self.K = K
+        self.r = r
+        self.sigma = sigma
+        self.T = T
+        self.pay_off = pay_off
+
+    def _time_steps(self) -> int:
+        """Amount of hours in self.T years"""
         return int(self.T * 252 * 6.5)
 
     @abstractmethod
@@ -98,8 +104,8 @@ class Simulator(PricingModel):
 
         params_delta['S'] += delta_S
 
-        return (self._model_pricing(params_delta)
-                - self._model_pricing(params_delta)) / delta_S
+        return (self._model_pricing(**params_delta)
+                - self._model_pricing(**params)) / delta_S
 
     def gamma(self, num_sims: int) -> float:
         """Returns the Gamma value of an option through finite differencing
@@ -122,9 +128,9 @@ class Simulator(PricingModel):
         params_delta_down = params.copy()
         params_delta_down['S'] -= delta_S
 
-        return (self._model_pricing(params_delta_up) -
-                2 * self._model_pricing(params) +
-                self._model_pricing(params_delta_down)) / (delta_S ** 2)
+        return (self._model_pricing(**params_delta_up) -
+                2 * self._model_pricing(**params) +
+                self._model_pricing(**params_delta_down)) / (delta_S ** 2)
 
     def vega(self, num_sims: int) -> float:
         """Returns the Vega value of an option through finite_differencing
@@ -137,7 +143,7 @@ class Simulator(PricingModel):
         -------
             vega : (float) representing the option price's sensitivity to volatility"""
 
-        delta_sigma = self.T / self._time_steps(self.T)
+        delta_sigma = self.T / self._time_steps()
 
         params = self._get_pricing_params(num_sims)
 
@@ -145,12 +151,10 @@ class Simulator(PricingModel):
 
         params_delta['sigma'] += delta_sigma
 
-        return (self._model_pricing(params_delta)
-                - self._model_pricing(params)) / delta_sigma
+        return (self._model_pricing(**params_delta)
+                - self._model_pricing(**params)) / delta_sigma
 
-    def theta(self, S: float, K: float, r: float, sigma: float, T: float, pay_off: PayOff,
-              option_type: Literal["call", "put"] = 'call', num_sims: int = 1000,
-              random_draws: np.array = None, random_jump_draws: np.array = None) -> float:
+    def theta(self, num_sims: int = 1000) -> float:
         """Returns the Theta value of an option through finite differencing
 
         Parameters
@@ -177,15 +181,16 @@ class Simulator(PricingModel):
         -------
             theta : (float) representing the option price's sensitivity to time passed, AKA time value"""
 
-        validate_option_type(option_type)
+        delta_T = self.T / self._time_steps()  # one extra time step
 
-        delta_T = T / self._time_steps(T)  # one extra time step
+        params = self._get_pricing_params(num_sims)
 
-        if random_draws is None:
-            random_draws = self._random_draws(T + delta_T, num_sims)
+        params_delta = params.copy()
 
-        return (self.mc_option_price(S, K, r, sigma, T + delta_T, option_type, num_sims, random_draws, random_jump_draws=random_jump_draws)
-                - self.mc_option_price(S, K, r, sigma, T, option_type, num_sims, random_draws[:-2, :], random_jump_draws=random_jump_draws[:-2, :])) / delta_T
+        params_delta['T'] += delta_T
+
+        return (self._model_pricing(**params_delta)
+                - self._model_pricing(**params)) / (- delta_T)
 
     def rho(self, num_sims: int) -> float:
         """Returns the Rho value of an option through finite_differencing
@@ -198,9 +203,7 @@ class Simulator(PricingModel):
         -------
             rho : (float) representing the option price's sensitivity to interest rate changes"""
 
-        validate_option_type(option_type)
-
-        delta_rho = self.T / self._time_steps(self.T)
+        delta_rho = self.T / self._time_steps()
 
         params = self._get_pricing_params(num_sims)
 
@@ -208,8 +211,18 @@ class Simulator(PricingModel):
 
         params_delta['rho'] += delta_rho
 
-        return (self._model_pricing(params_delta)
-                - self._model_pricing(params)) / delta_rho
+        return (self._model_pricing(**params_delta)
+                - self._model_pricing(**params)) / delta_rho
+
+    def greeks(self, num_sims: int) -> dict:
+
+        return {
+            'delta': self.delta(num_sims),
+            'gamma': self.gamma(num_sims),
+            'vega': self.vega(num_sims),
+            'theta': self.theta(num_sims),
+            'rho': self.rho(num_sims)
+        }
 
 
 class AnalyticFormula():
@@ -458,26 +471,23 @@ class AnalyticFormula():
 class MonteCarlo(Simulator):
     """Class utilizes Monte Carlo techniques to determine option qualities based on jump diffusion """
 
-    def __init__(self, option: Option, pay_off: PayOff, lambda_j: float = 0.1,
+    def __init__(self, S0: float, K: float, r: float, sigma: float, T: float,
+                 pay_off: PayOff, lambda_j: float = 0.1,
                  mu_j: float = -0.2, sigma_j: float = 0.3):
-        self.S0 = option.get_underlying_price()
-        self.K = option.get_strike_price()
-        self.r = option.get_risk_free_rate()
-        self.sigma = option.get_volatility()
-        self.T = option.get_maturity_time()
-        self.pay_off = pay_off
+        super().__init__(S0, K, r, sigma, T, pay_off)
         self.lambda_j = lambda_j
         self.mu_j = mu_j
         self.sigma_j = sigma_j
 
-    def _random_draws(self, T, num_sims):
+    def _random_draws(self, num_sims):
         """Returns a standard random sample"""
 
-        time_steps = self._time_steps(T)
+        time_steps = self._time_steps()
 
         return np.random.normal(0, 1, size=(time_steps, num_sims))
 
-    def _random_jump_draws(self, T: float, num_sims: int, lambda_j: float = 0.1, mu_j: float = -0.2,  sigma_j: float = 0.3):
+    def _random_jump_draws(self, num_sims: int, lambda_j: float = 0.1,
+                           mu_j: float = -0.2,  sigma_j: float = 0.3):
         """Returns a random sample of the jump component in Merton's jump-diffusion model
 
         Parameters
@@ -496,8 +506,8 @@ class MonteCarlo(Simulator):
         -------
         """
 
-        n_steps = self._time_steps(T)
-        dt = T / n_steps
+        n_steps = self._time_steps()
+        dt = self.T / n_steps
         return np.random.normal(mu_j, sigma_j, size=(n_steps, num_sims)) * np.random.poisson(lambda_j * dt, size=(n_steps, num_sims))
 
     def _get_pricing_params(self, num_sims):
@@ -512,9 +522,8 @@ class MonteCarlo(Simulator):
             'mu_j': self.mu_j,
             'sigma_j': self.sigma_j,
             'num_sims': num_sims,
-            'random_draws': self._random_draws(self.T, num_sims),
-            'random_jump_draws': self._random_jump_draws(self.T, num_sims,
-                                                         self.lambda_j, self.mu_j, self.sigma_j)
+            'random_draws': self._random_draws(num_sims),
+            'random_jump_draws': self._random_jump_draws(num_sims, self.lambda_j, self.mu_j, self.sigma_j)
 
         }
 
@@ -548,7 +557,7 @@ class MonteCarlo(Simulator):
         -------
             option_price : (float) calculated option price"""
 
-        total_trading_hours = self._time_steps(T)
+        total_trading_hours = self._time_steps()
 
         if jump_diff:
             sims = merton_jump_diff(S0=S0, mu=r, sigma=sigma, lambda_j=lambda_j,
@@ -566,60 +575,19 @@ class MonteCarlo(Simulator):
         # calculating option price
         return np.exp(- r * T) * np.mean(payoffs)
 
-    def theta(self, S: float, K: float, r: float, sigma: float, T: float, pay_off: PayOff,
-              option_type: Literal["call", "put"] = 'call', num_sims: int = 1000,
-              random_draws: np.array = None, random_jump_draws: np.array = None) -> float:
-        """Returns the Theta value of an option through finite differencing 
-
-        Parameters
-        ----------
-            S : (float) underlying price 
-
-            K : (float) strike price 
-
-            r : (float) risk-free rate, 0.05 means 5% 
-
-            sigma : (float) volatility, 0.05 means 5% 
-
-            T : (float) time till maturity in years 
-
-            pay_off : (PayOff) class for determining optoin intrinsic value at expiration
-
-            option_type : (str) one of ['call' or 'put'] for desired option type
-
-            num_sims : (int) number of simultaions to run
-
-            random_jump_draws : (np.array) pre-sample random draws for the jump component of the model in size (int(T * 252 * 6.5), num_sims)
-
-        Returns
-        -------
-            theta : (float) representing the option price's sensitivity to time passed, AKA time value"""
-
-        validate_option_type(option_type)
-
-        delta_T = T / self._time_steps(T)  # one extra time step
-
-        if random_draws is None:
-            random_draws = self._random_draws(T + delta_T, num_sims)
-
-        return (self.mc_option_price(S, K, r, sigma, T + delta_T, option_type, num_sims, random_draws, random_jump_draws=random_jump_draws)
-                - self.mc_option_price(S, K, r, sigma, T, option_type, num_sims, random_draws[:-2, :], random_jump_draws=random_jump_draws[:-2, :])) / delta_T
-
 
 class StochasticVolatility(Simulator):
 
-    def __init__(self, S0: float, r: float, T: float,
+    def __init__(self, S0: float, K: float, r: float, T: float,
                  sigma: float, corr: float, epsilon: float,
                  kappa: float, theta: float, pay_off: PayOff,):
-        self.S0 = S0
-        self.r = r
-        self.T = T
-        self.sigma = sigma
+
+        super().__init__(S0, K, r, sigma, T, pay_off)
+
         self.corr = corr
         self.epsilon = epsilon
         self.kappa = kappa
         self._theta = theta
-        self.pay_off = pay_off
 
     def _random_draws(self, T, num_sims, corr):
         n_steps = self._time_steps(T)
@@ -692,24 +660,3 @@ class StochasticVolatility(Simulator):
 
         # calculating option price
         return np.exp(- r * T) * np.mean(payoffs)
-
-
-if __name__ == '__main__':
-    black_scholes = AnalyticFormula()
-    monte_carlo = MonteCarlo()
-
-    S = 100
-    K = 90
-    r = 0.05
-    sigma = 0.2
-    T = 1
-    lambda_j = 0.1  # Jump intensity
-    mu_j = -0.2  # Mean jump size
-    sigma_j = 0.3
-    option_type = 'call'
-    pay_off = PayOffEuropean(K, option_type)
-
-    option_price = black_scholes.black_scholes_price(
-        S, K, r, sigma, T, option_type)
-
-    print(monte_carlo.option_price(S, K, r, sigma, T, pay_off))

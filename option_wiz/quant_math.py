@@ -36,7 +36,7 @@ def gbm_simulation(S0: float, mu: float,
         (mu - sigma ** 2 / 2) * dt
         + sigma * np.sqrt(dt) * random_draws, axis=0)
 
-    return np.exp(np.vstack(np.log(S0), St))
+    return np.exp(np.vstack([np.log(S0) * np.ones((1, num_sims)), St]))
 
 
 def merton_jump_diff(S0: float, mu: float, sigma: float, T: float,  n_steps: int, num_sims: int,
@@ -85,7 +85,7 @@ def merton_jump_diff(S0: float, mu: float, sigma: float, T: float,  n_steps: int
         (mu - sigma ** 2 / 2) * dt
         + sigma * np.sqrt(dt) * random_draws + random_jump_draws, axis=0)
 
-    return np.exp(np.vstack(np.log(S0), St))
+    return np.exp(np.vstack([np.log(S0) * np.ones((1, num_sims)), St]))
 
 
 def heston_path(S0: float, mu: float, n_steps: int, T: float,

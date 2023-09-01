@@ -1,8 +1,9 @@
 from typing import Literal
 from abc import ABC, abstractmethod
+from PayOff import PayOff
 
-from option_wiz.PricingModels import AnalyticFormula, MonteCarlo
-from option_wiz.PayOff import *
+from PricingModels import AnalyticFormula, MonteCarlo
+from PayOff import *
 from utils import validate_option_type
 
 ANALYTIC_FORMULA = AnalyticFormula()
@@ -35,7 +36,8 @@ class Option(ABC):
 
         pay_off = self._create_payoff()
 
-        self.MONTE_CARLO = MonteCarlo(self, pay_off)
+        self.MONTE_CARLO = MonteCarlo(self.get_underlying_price(), self.get_strike_price(
+        ), self.get_risk_free_rate(), self.get_volatility(), self.get_maturity_time(), pay_off)
 
     @abstractmethod
     def _create_payoff(self) -> PayOff:
@@ -198,6 +200,9 @@ class EuropeanOption(Option):
         super().__init__(strike_price, risk_free_rate, maturity_time,
                          underlying_price, volatility, option_type)
 
+    def _create_payoff(self) -> PayOff:
+        return PayOffEuropean(self.get_strike_price(), self.get_option_type())
+
     def black_scholes_price(self) -> float:
         """Calculates the call price of the option using Black-Scholes Formula
 
@@ -357,6 +362,5 @@ class DoubleDigitalOption(Option):
     def get_strike_price(self, upper: bool = True) -> float:
         return self.U if upper else self.D
 
-    @abstractmethod
     def _create_payoff(self) -> PayOff:
         return PayOffDoubleDigital(self.U, self.D, self.C)
