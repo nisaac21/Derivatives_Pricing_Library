@@ -1,9 +1,8 @@
 from typing import Literal
 from abc import ABC, abstractmethod
 
-
-from PricingModels import AnalyticFormula, MonteCarlo
-from PayOff import PayOff, PayOffEuropean, PayOffAsianOptionArithmetic, PayOffAsianOptionGeometric
+from option_py.PricingModels import AnalyticFormula, MonteCarlo
+from option_py.PayOff import *
 from utils import validate_option_type
 
 ANALYTIC_FORMULA = AnalyticFormula()
@@ -199,10 +198,6 @@ class EuropeanOption(Option):
         super().__init__(strike_price, risk_free_rate, maturity_time,
                          underlying_price, volatility, option_type)
 
-        self.pay_off = PayOffEuropean(self.K, option_type)
-
-        self.MONTE_CARLO = MonteCarlo(self, self.pay_off)
-
     def black_scholes_price(self) -> float:
         """Calculates the call price of the option using Black-Scholes Formula
 
@@ -296,7 +291,7 @@ class EuropeanOption(Option):
 
 class AsianOption(Option):
 
-    """Abstract Base Class for Option type contracts.
+    """ Class for exotic Asian Option type contracts.
 
     Parameters
     ----------
@@ -324,3 +319,44 @@ class AsianOption(Option):
     def _create_payoff(self) -> PayOff:
         return PayOffAsianOptionArithmetic(
             self.K, self.option_type) if self.arith_avg else PayOffAsianOptionGeometric(self.K, self.option_type)
+
+
+class DigitalOption(Option):
+
+    def __init__(self, strike_price: float, risk_free_rate: float, maturity_time: float,
+                 underlying_price: float, volatility: float, coupon: float, option_type: Literal['call', 'put'] = 'call',
+                 ) -> None:
+        self.C = coupon
+        super().__init__(strike_price, risk_free_rate, maturity_time,
+                         underlying_price, volatility, option_type)
+
+    def _create_payoff(self) -> PayOff:
+        return PayOffDigital(self.K, self.option_type, self.C)
+
+
+class DoubleDigitalOption(Option):
+
+    def __init__(self, upper_strike_price: float, lower_strike_price: float,
+                 risk_free_rate: float, maturity_time: float,
+                 underlying_price: float, volatility: float, coupon: float,
+                 option_type: Literal["call", "put"] = 'call') -> None:
+        validate_option_type(option_type)
+        self.U = upper_strike_price
+        self.D = lower_strike_price
+        self.r = risk_free_rate
+        self.T = maturity_time
+        self.S = underlying_price
+        self.sigma = volatility
+        self.C = coupon
+        self.option_type = option_type
+
+        pay_off = self._create_payoff()
+
+        self.MONTE_CARLO = MonteCarlo(self, pay_off)
+
+    def get_strike_price(self, upper: bool = True) -> float:
+        return self.U if upper else self.D
+
+    @abstractmethod
+    def _create_payoff(self) -> PayOff:
+        return PayOffDoubleDigital(self.U, self.D, self.C)

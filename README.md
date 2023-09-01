@@ -17,7 +17,7 @@ Strategy Performance: https://medium.com/@rgaveiga/optionlab-a-python-library-fo
 * Pricing Models: Implement common options pricing models like Black-Scholes, Binomial, and Monte Carlo simulations.
 Allow users to calculate option prices, Greeks (Delta, Gamma, Theta, Vega, Rho), and implied volatility.
 
-* Volatility Analysis: Provide tools to analyze historical and implied volatility. Offer functions to compute volatility skews, term structures, and volatility cones.
+* Volatility Analysis: Provide tools to analyze historical and implied volatility. Offer functions to compute volatility smile, volatility skews, term structures, and volatility cones.
 
 * Volatility Forecasting: Implement features to forecast future implied or historical volatility using different models, such as GARCH
 
