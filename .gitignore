@@ -3,3 +3,4 @@
 /.vscode
 /build
 /option_wiz/option_wiz.egg-info
+/option_wiz/__pycache__
