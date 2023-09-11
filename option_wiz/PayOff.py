@@ -74,6 +74,7 @@ class PayOffAsianOption(PayOff):
 
     @abstractmethod
     def _get_mean(self, path):
+        """Averaging process used for option pay off calculation"""
         pass
 
     def pay_off(self, spot_prices: np.array) -> float:
