@@ -19,7 +19,7 @@ Operating System :: MacOS
 
 setup(
     name="option-wiz",
-    version="0.0.1",
+    version="0.0.2",
     description="Package for option calculations",
     long_description=Path("README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
